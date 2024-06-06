@@ -145,10 +145,10 @@ def main():
 
     # Convert the image from BGR to RGB
       im_real_rgb = cv2.cvtColor(im_real, cv2.COLOR_BGR2RGB)
-      saved_str = "Cuong/" + str(idx) + ".png"
+      saved_str = "result_img/" + str(idx) + ".png"
       cv2.imwrite(saved_str, im_real_rgb)
       im_rgb = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-      saved_str = "Cuong/" + str(idx) + "_" + str(i) + ".png"
+      saved_str = "result_img/" + str(idx) + "_" + str(i) + ".png"
       cv2.imwrite(saved_str, im_rgb)
 
   plt.imshow(im_real)
