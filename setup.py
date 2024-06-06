@@ -12,7 +12,7 @@ setup(
         'chumpy',
         'numpy',
         'matplotlib',
-        'open3d',
+        'open3d==0.14',
         'opencv-python',
         'pycocotools',
         'pyglet',

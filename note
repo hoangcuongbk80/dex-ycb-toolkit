@@ -1,0 +1,3 @@
+conda activate DexNet_env
+export DEX_YCB_DIR=/home/cuong/Datasets/dex-ycb
+python examples/visualize_pose.py

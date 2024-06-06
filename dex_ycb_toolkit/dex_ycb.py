@@ -8,6 +8,7 @@ import os
 import yaml
 import numpy as np
 
+
 _SUBJECTS = [
     '20200709-subject-01',
     '20200813-subject-02',

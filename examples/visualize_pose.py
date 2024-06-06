@@ -45,6 +45,9 @@ def create_scene(sample, obj_file):
 
   # Load YCB meshes.
   mesh_y = []
+  print('ycb_ids:')
+  print(sample['ycb_ids'])
+
   for i in sample['ycb_ids']:
     mesh = trimesh.load(obj_file[i])
     mesh = pyrender.Mesh.from_trimesh(mesh)
@@ -52,11 +55,15 @@ def create_scene(sample, obj_file):
 
   # Add YCB meshes.
   for o in range(len(pose_y)):
+    if sample['ycb_ids'][o]!=1:
+      continue
     if np.all(pose_y[o] == 0.0):
       continue
+
     pose = np.vstack((pose_y[o], np.array([[0, 0, 0, 1]], dtype=np.float32)))
     pose[1] *= -1
     pose[2] *= -1
+    #Cuong
     node = scene.add(mesh_y[o], pose=pose)
 
   # Load MANO layer.
@@ -71,8 +78,13 @@ def create_scene(sample, obj_file):
   # Add MANO meshes.
   if not np.all(pose_m == 0.0):
     pose = torch.from_numpy(pose_m)
+
+    #Cuong
+    #vert, _ = mano_layer(pose[:, 0:48]*0.93, betas, pose[:, 48:51]*1.03)
+    
     vert, _ = mano_layer(pose[:, 0:48], betas, pose[:, 48:51])
     vert /= 1000
+    
     vert = vert.view(778, 3)
     vert = vert.numpy()
     vert[:, 1] *= -1
@@ -92,8 +104,9 @@ def main():
   name = 's0_train'
   dataset = get_dataset(name)
 
-  idx = 70
-
+  idx = 61
+  #30000, 
+  
   sample = dataset[idx]
 
   scene_r = create_scene(sample, dataset.obj_file)
@@ -107,12 +120,20 @@ def main():
   im_render, _ = r.render(scene_r)
 
   im_real = cv2.imread(sample['color_file'])
+  print("Cuong: ")
+  print(sample['color_file'])
   im_real = im_real[:, :, ::-1]
 
-  im = 0.33 * im_real.astype(np.float32) + 0.67 * im_render.astype(np.float32)
+  #Cuong
+  #im = 0.33 * im_real.astype(np.float32) + 0.67 * im_render.astype(np.float32)
+  im = 0.4 * im_real.astype(np.float32) + 0.6 * im_render.astype(np.float32)
   im = im.astype(np.uint8)
 
   print('Close the window to continue.')
+
+  plt.imshow(im_real)
+  plt.tight_layout()
+  plt.show()
 
   plt.imshow(im)
   plt.tight_layout()
