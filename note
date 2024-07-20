@@ -1,3 +1,4 @@
 conda activate DexNet_env
 export DEX_YCB_DIR=/home/cuong/Datasets/dex-ycb
+pip install dex-ycb-toolkit==1.0
 python examples/visualize_pose.py

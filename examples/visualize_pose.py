@@ -16,7 +16,7 @@ from manopth.manolayer import ManoLayer
 from dex_ycb_toolkit.factory import get_dataset
 
 
-def create_scene(sample, obj_file, err):
+def create_scene(sample, obj_file):
   """Creates the pyrender scene of an image sample.
 
   Args:
@@ -27,7 +27,7 @@ def create_scene(sample, obj_file, err):
     A pyrender scene object.
   """
   # Create pyrender scene.
-  scene = pyrender.Scene(bg_color=np.array([0.0, 0.0, 0.0, 0.0]),
+  scene = pyrender.Scene(bg_color=np.array([1.0, 1.0, 1.0, 1.0]),
                          ambient_light=np.array([1.0, 1.0, 1.0]))
 
   # Add camera.
@@ -80,9 +80,9 @@ def create_scene(sample, obj_file, err):
     pose = torch.from_numpy(pose_m)
 
     #Cuong
-    vert, _ = mano_layer(pose[:, 0:48]*(1+err), betas, pose[:, 48:51]*(1 + err)) #err=0.03
+    #vert, _ = mano_layer(pose[:, 0:48]*0.93, betas, pose[:, 48:51]*1.03)
     
-    #vert, _ = mano_layer(pose[:, 0:48], betas, pose[:, 48:51])
+    vert, _ = mano_layer(pose[:, 0:48], betas, pose[:, 48:51])
     vert /= 1000
     
     vert = vert.view(778, 3)
@@ -104,52 +104,32 @@ def main():
   name = 's0_train'
   dataset = get_dataset(name)
 
-  idx_list = {1500, 25000, 35000, 45000, 65000, 75000, 85000, 95000, 
-  10000, 14000, 15000, 16000, 18000, 20000, 22000, 27000}
+  idx = 80000
   #30000, 
+  
+  sample = dataset[idx]
 
-  # for idx in idx_list:
-  #   sample = dataset[idx]
-  #   im_real = cv2.imread(sample['color_file'])
-  #   saved_str = "Cuong/" + str(idx) + ".png"
-  #   cv2.imwrite(saved_str, im_real)
+  scene_r = create_scene(sample, dataset.obj_file)
+  scene_v = create_scene(sample, dataset.obj_file)
 
+  print('Visualizing pose in camera view using pyrender renderer')
 
+  r = pyrender.OffscreenRenderer(viewport_width=dataset.w,
+                                 viewport_height=dataset.h)
 
-  for idx in idx_list:
-    for i in range (0,6): 
-      
-      sample = dataset[idx]
+  im_render, _ = r.render(scene_r)
 
-      scene_r = create_scene(sample, dataset.obj_file, i*0.025)
-      #scene_v = create_scene(sample, dataset.obj_file, i*0.01)
+  im_real = cv2.imread(sample['color_file'])
+  print("Cuong: ")
+  print(sample['color_file'])
+  im_real = im_real[:, :, ::-1]
 
-      print('Visualizing pose in camera view using pyrender renderer')
+  #Cuong
+  #im = 0.33 * im_real.astype(np.float32) + 0.67 * im_render.astype(np.float32)
+  im = 0.4 * im_real.astype(np.float32) + 0.6 * im_render.astype(np.float32)
+  im = im.astype(np.uint8)
 
-      r = pyrender.OffscreenRenderer(viewport_width=dataset.w,
-                                    viewport_height=dataset.h)
-
-      im_render, _ = r.render(scene_r)
-
-      im_real = cv2.imread(sample['color_file'])
-      print("Cuong: ")
-      print(sample['color_file'])
-      im_real = im_real[:, :, ::-1]
-
-      #Cuong
-      #im = 0.33 * im_real.astype(np.float32) + 0.67 * im_render.astype(np.float32)
-      im = 0.5 * im_real.astype(np.float32) + 0.8 * im_render.astype(np.float32)
-      im = im.astype(np.uint8)
-
-      print('Close the window to continue.')
-
-    # Convert the image from BGR to RGB
-      im_real_rgb = cv2.cvtColor(im_real, cv2.COLOR_BGR2RGB)
-      saved_str = "result_img/" + str(idx) + ".png"
-      cv2.imwrite(saved_str, im_real_rgb)
-      im_rgb = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-      saved_str = "result_img/" + str(idx) + "_" + str(i) + ".png"
-      cv2.imwrite(saved_str, im_rgb)
+  print('Close the window to continue.')
 
   plt.imshow(im_real)
   plt.tight_layout()
@@ -161,7 +141,7 @@ def main():
 
   print('Visualizing pose using pyrender 3D viewer')
 
-  #pyrender.Viewer(scene_v)
+  pyrender.Viewer(scene_v)
 
 
 if __name__ == '__main__':

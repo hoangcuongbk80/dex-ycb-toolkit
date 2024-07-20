@@ -1,0 +1,205 @@
+# DexYCB Toolkit
+# Copyright (C) 2021 NVIDIA Corporation
+# Licensed under the GNU General Public License v3.0 [see LICENSE for details]
+
+"""Example of visualizing object and hand pose of one image sample."""
+
+import numpy as np
+import pyrender
+import trimesh
+import torch
+import cv2
+import matplotlib.pyplot as plt
+
+from scipy.spatial.transform import Rotation as R
+from manopth.manolayer import ManoLayer
+from dex_ycb_toolkit.factory import get_dataset
+
+def apply_rotation_noise(rotation_matrix, noise_level):
+    """Applies small random rotations to a given rotation matrix."""
+    # Generate small random rotations about the x, y, and z axes
+    random_angles = np.random.normal(0, noise_level, size=3)  # Mean 0, std = noise_level
+    random_rotation = R.from_euler('xyz', random_angles).as_matrix()
+
+    # Apply the random rotation to the original rotation matrix
+    noisy_rotation_matrix = np.dot(rotation_matrix, random_rotation)
+
+    return noisy_rotation_matrix
+
+def create_scene(sample, obj_file, err):
+  """Creates the pyrender scene of an image sample.
+
+  Args:
+    sample: A dictionary holding an image sample.
+    obj_file: A dictionary holding the paths to YCB OBJ files.
+
+  Returns:
+    A pyrender scene object.
+  """
+  # Create pyrender scene.
+  scene = pyrender.Scene(bg_color=np.array([0.0, 0.0, 0.0, 0.0]),
+                         ambient_light=np.array([1.0, 1.0, 1.0]))
+
+  # Add camera.
+  fx = sample['intrinsics']['fx']
+  fy = sample['intrinsics']['fy']
+  cx = sample['intrinsics']['ppx']
+  cy = sample['intrinsics']['ppy']
+  cam = pyrender.IntrinsicsCamera(fx, fy, cx, cy)
+  scene.add(cam, pose=np.eye(4))
+
+  # Load poses.
+  label = np.load(sample['label_file'])
+  pose_y = label['pose_y']
+  pose_m = label['pose_m']
+
+  # Load YCB meshes.
+  mesh_y = []
+  print('ycb_ids:')
+  print(sample['ycb_ids'])
+
+  for i in sample['ycb_ids']:
+    mesh = trimesh.load(obj_file[i])
+    #mesh = pyrender.Mesh.from_trimesh(mesh)
+
+    # Cuong Change color to grey
+    material = pyrender.MetallicRoughnessMaterial(baseColorFactor=[0.0, 0.8, 0.0, 1.0])  # RGBA values for grey color
+    mesh = pyrender.Mesh.from_trimesh(mesh, material=material)
+
+    mesh_y.append(mesh)
+
+  # Add YCB meshes.
+  for o in range(len(pose_y)):
+    #if sample['ycb_ids'][o]!=1:
+    #  continue
+    if np.all(pose_y[o] == 0.0):
+      continue
+
+    pose = np.vstack((pose_y[o], np.array([[0, 0, 0, 1]], dtype=np.float32)))
+    pose[1] *= -1
+    pose[2] *= -1
+    # Cuong
+    translation_noise = np.random.normal(0, err*0.05, size=(3, 1))  # Mean 0, std 0.01
+    pose[:3, 3:] += translation_noise
+    # Apply rotation noise using the new function
+    pose[:3, :3] = apply_rotation_noise(pose[:3, :3], err)
+    #Cuong
+    node = scene.add(mesh_y[o], pose=pose)
+
+  # Load MANO layer.
+  mano_layer = ManoLayer(flat_hand_mean=False,
+                         ncomps=45,
+                         side=sample['mano_side'],
+                         mano_root='manopth/mano/models',
+                         use_pca=True)
+  faces = mano_layer.th_faces.numpy()
+  betas = torch.tensor(sample['mano_betas'], dtype=torch.float32).unsqueeze(0)
+
+  # Add MANO meshes.
+  if not np.all(pose_m == 0.0):
+    pose = torch.from_numpy(pose_m)
+
+    #Cuong
+    #vert, _ = mano_layer(pose[:, 0:48]*(1+err), betas, pose[:, 48:51]*(1 + err)) #err=0.03
+    vert, _ = mano_layer(pose[:, 0:48], betas, pose[:, 48:51])
+    vert /= 1000
+    
+    vert = vert.view(778, 3)
+    vert = vert.numpy()
+    vert[:, 1] *= -1
+    vert[:, 2] *= -1
+    mesh = trimesh.Trimesh(vertices=vert, faces=faces)
+    mesh1 = pyrender.Mesh.from_trimesh(mesh)
+    mesh1.primitives[0].material.baseColorFactor = [0.8, 0.0, 0.0, 1.0]
+    mesh2 = pyrender.Mesh.from_trimesh(mesh, wireframe=True)
+    mesh2.primitives[0].material.baseColorFactor = [0.0, 0.0, 0.0, 1.0]
+    node1 = scene.add(mesh1)
+    #node2 = scene.add(mesh2)
+
+  return scene
+
+
+def main():
+  name = 's0_train'
+  dataset = get_dataset(name)
+
+  #idx_list = {101000, 131000, 151000, 181000, 210000, 251000, 101035, 210040}
+  idx_list = {2000}
+
+
+  # for idx in idx_list:
+  #   sample = dataset[idx]
+  #   im_real = cv2.imread(sample['color_file'])
+  #   print(idx)
+  #   print(sample['color_file'])
+  #   saved_str = "result_img/" + str(idx) + ".png"
+  #   cv2.imwrite(saved_str, im_real)
+
+  # exit()
+
+
+  for idx in idx_list:
+    for i in range (0,5): 
+      
+      sample = dataset[idx]
+      print("Cuong: ")
+      print(sample['color_file'])
+
+      scene_r = create_scene(sample, dataset.obj_file, i*0.02)
+      #scene_r = create_scene(sample, dataset.obj_file, 0)
+      #scene_v = create_scene(sample, dataset.obj_file, i*0.01)
+
+      print('Visualizing pose in camera view using pyrender renderer')
+
+      r = pyrender.OffscreenRenderer(viewport_width=dataset.w,
+                                    viewport_height=dataset.h)
+
+      im_render, _ = r.render(scene_r)
+
+      im_real = cv2.imread(sample['color_file'])
+      im_real = im_real[:, :, ::-1]
+
+      #Cuong
+      #im = 0.33 * im_real.astype(np.float32) + 0.67 * im_render.astype(np.float32)
+      #im = 0.4 * im_real.astype(np.float32) + 0.6*im_render.astype(np.float32)
+      #Cuong
+      mask = im_render != 0
+      im = np.where(mask, im_render , im_real).astype(np.uint8)
+
+      im = im.astype(np.uint8)
+
+      print('Close the window to continue.')
+
+    # Convert the image from BGR to RGB
+      im_real_rgb = cv2.cvtColor(im_real, cv2.COLOR_BGR2RGB)
+      saved_str = "result_img/" + str(idx) + "_rgb" + ".png"
+      cv2.imwrite(saved_str, im_real_rgb)
+      im_rgb = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+      saved_str = "result_img/" + str(idx) + "_" + str(i) + ".png"
+      cv2.imwrite(saved_str, im_rgb)
+
+      #Cuong, save depth
+      im_depth = cv2.imread(sample['depth_file'], -1)
+      saved_str = "result_img/" + str(idx) + "_depth" + ".png"
+      cv2.imwrite(saved_str, im_depth)
+
+
+  # plt.imshow(im_real)
+  # plt.tight_layout()
+  # plt.show()
+
+  im_depth = im_depth.astype(np.float32)
+  plt.imshow(im_depth)
+  plt.tight_layout()
+  plt.show()
+
+  # plt.imshow(im)
+  # plt.tight_layout()
+  # plt.show()
+
+  #print('Visualizing pose using pyrender 3D viewer')
+  #pyrender.Viewer(scene_v)
+
+
+if __name__ == '__main__':
+  main()

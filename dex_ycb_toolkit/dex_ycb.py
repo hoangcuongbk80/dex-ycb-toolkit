@@ -9,18 +9,25 @@ import yaml
 import numpy as np
 
 
+# _SUBJECTS = [
+#     '20200709-subject-01',
+#     '20200813-subject-02',
+#     '20200820-subject-03',
+#     '20200903-subject-04',
+#     '20200908-subject-05',
+#     '20200918-subject-06',
+#     '20200928-subject-07',
+#     '20201002-subject-08',
+#     '20201015-subject-09',
+#     '20201022-subject-10',
+# ]
+
 _SUBJECTS = [
     '20200709-subject-01',
     '20200813-subject-02',
     '20200820-subject-03',
-    '20200903-subject-04',
-    '20200908-subject-05',
-    '20200918-subject-06',
-    '20200928-subject-07',
-    '20201002-subject-08',
-    '20201015-subject-09',
-    '20201022-subject-10',
 ]
+
 
 _SERIALS = [
     '836212060125',
@@ -127,7 +134,7 @@ class DexYCBDataset():
     # Seen subjects, camera views, grasped objects.
     if self._setup == 's0':
       if self._split == 'train':
-        subject_ind = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        subject_ind = [0, 1, 2]
         serial_ind = [0, 1, 2, 3, 4, 5, 6, 7]
         sequence_ind = [i for i in range(100) if i % 5 != 4]
       if self._split == 'val':
@@ -142,7 +149,7 @@ class DexYCBDataset():
     # Unseen subjects.
     if self._setup == 's1':
       if self._split == 'train':
-        subject_ind = [0, 1, 2, 3, 4, 5, 9]
+        subject_ind = [0, 1, 2]
         serial_ind = [0, 1, 2, 3, 4, 5, 6, 7]
         sequence_ind = list(range(100))
       if self._split == 'val':
@@ -157,32 +164,32 @@ class DexYCBDataset():
     # Unseen camera views.
     if self._setup == 's2':
       if self._split == 'train':
-        subject_ind = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        subject_ind = [0, 1, 2]
         serial_ind = [0, 1, 2, 3, 4, 5]
         sequence_ind = list(range(100))
       if self._split == 'val':
-        subject_ind = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        subject_ind = [0, 1, 2, 3]
         serial_ind = [6]
         sequence_ind = list(range(100))
       if self._split == 'test':
-        subject_ind = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        subject_ind = [0, 1, 2, 3]
         serial_ind = [7]
         sequence_ind = list(range(100))
 
     # Unseen grasped objects.
     if self._setup == 's3':
       if self._split == 'train':
-        subject_ind = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        subject_ind = [0, 1, 2]
         serial_ind = [0, 1, 2, 3, 4, 5, 6, 7]
         sequence_ind = [
             i for i in range(100) if i // 5 not in (3, 7, 11, 15, 19)
         ]
       if self._split == 'val':
-        subject_ind = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        subject_ind = [0, 1, 2, 3]
         serial_ind = [0, 1, 2, 3, 4, 5, 6, 7]
         sequence_ind = [i for i in range(100) if i // 5 in (3, 19)]
       if self._split == 'test':
-        subject_ind = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        subject_ind = [0, 1, 2, 3]
         serial_ind = [0, 1, 2, 3, 4, 5, 6, 7]
         sequence_ind = [i for i in range(100) if i // 5 in (7, 11, 15)]
 
